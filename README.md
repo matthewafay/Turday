@@ -4,6 +4,8 @@
 
 You're a turtle. The beach is up there. Between you and it: tank divisions, strafing dive-bombers, marching infantry, minefields, tracer fire, and barbed wire. You have three lives. *Move.*
 
+![Gameplay](docs/gameplay.gif)
+
 ![TurDay title screen](docs/title.png)
 
 ---
