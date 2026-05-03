@@ -323,27 +323,101 @@ public sealed class GameApp
 
     private void DrawTitle()
     {
-        _renderer.DrawCenteredLine(3,  Width, "==============================================", ConsoleColor.DarkYellow);
-        _renderer.DrawCenteredLine(4,  Width, "|                                            |", ConsoleColor.DarkYellow);
-        _renderer.DrawCenteredLine(5,  Width, "|              T U R D A Y                   |", ConsoleColor.Yellow);
-        _renderer.DrawCenteredLine(6,  Width, "|       OPERATION  SHELLSTORM                |", ConsoleColor.Red);
-        _renderer.DrawCenteredLine(7,  Width, "|     storming the beach against all odds    |", ConsoleColor.DarkYellow);
-        _renderer.DrawCenteredLine(8,  Width, "==============================================", ConsoleColor.DarkYellow);
+        DrawTitleAtmosphere();
+        DrawTitleFrame(top: 4, height: 9, frameWidth: 54);
 
-        _renderer.DrawCenteredLine(10, Width, "created by Matthew Fay", ConsoleColor.DarkGray);
+        // Big "TURDAY" — uses the HUD font, spans 2 cell rows
+        _renderer.DrawCenteredBig(6, Width, "T U R D A Y", System.Drawing.Color.FromArgb(255, 220, 60));
 
-        _renderer.DrawCenteredLine(12, Width, $"HIGH SCORE   {_save.HighScore}", ConsoleColor.Yellow);
-        _renderer.DrawCenteredLine(13, Width, $"coins  {_save.Coins}     best stage  {_save.BestStage}", ConsoleColor.DarkGray);
+        // Subtitle inside frame
+        _renderer.DrawCenteredLine(9,  Width, "O P E R A T I O N    S H E L L S T O R M",
+            System.Drawing.Color.FromArgb(220, 60, 60));
+        _renderer.DrawCenteredLine(11, Width, "storming the beach. against all odds.",
+            System.Drawing.Color.FromArgb(180, 150, 90));
 
+        // Stats block
+        _renderer.DrawCenteredLine(15, Width, $"HIGH SCORE   {_save.HighScore}", ConsoleColor.Yellow);
+        _renderer.DrawCenteredLine(16, Width, $"best stage  {_save.BestStage}     medals  {_save.Coins}",
+            ConsoleColor.DarkGray);
+
+        // Menu — highlighted current option with arrow + brackets
+        int menuTop = 19;
         for (int i = 0; i < TitleOptions.Length; i++)
         {
-            string prefix = (_menuCursor == i) ? "> " : "  ";
-            _renderer.DrawCenteredLine(15 + i, Width, prefix + TitleOptions[i] + (_menuCursor == i ? " <" : "  "),
-                _menuCursor == i ? ConsoleColor.White : ConsoleColor.Gray);
+            bool selected = _menuCursor == i;
+            string label = TitleOptions[i].ToUpper();
+            string text = selected ? $"►  [ {label} ]" : $"   {label}";
+            var color = selected
+                ? System.Drawing.Color.FromArgb(255, 230, 80)
+                : System.Drawing.Color.FromArgb(140, 140, 140);
+            _renderer.DrawCenteredLine(menuTop + i * 2, Width, text, color);
         }
 
-        _renderer.DrawCenteredLine(ScreenHeight - 3, Width,
-            "[Up/Down] move    [Enter] select    [Esc/Q] quit", ConsoleColor.DarkGray);
+        // Footer: controls + credit
+        _renderer.DrawCenteredLine(ScreenHeight - 4, Width,
+            "[Up/Down] navigate    [Enter] select    [Esc/Q] quit",
+            System.Drawing.Color.FromArgb(110, 110, 110));
+        _renderer.DrawCenteredLine(ScreenHeight - 2, Width, "── created by Matthew Fay ──",
+            System.Drawing.Color.FromArgb(130, 130, 110));
+
+        // Decorative horizon strip at the very bottom
+        DrawTitleHorizon(ScreenHeight - 1);
+    }
+
+    private void DrawTitleAtmosphere()
+    {
+        // Drifting smoke / battlefield haze
+        int animTick = _renderer.AnimTick;
+        for (int row = 0; row < ScreenHeight; row++)
+        {
+            for (int col = 0; col < Width; col++)
+            {
+                int driftedCol = (col + animTick / 6) & 31;
+                int hash = unchecked(driftedCol * 73 + row * 31);
+                int b = hash & 63;
+                if (b == 0)      _renderer.DrawText(row, col, "░", System.Drawing.Color.FromArgb(50, 55, 60));
+                else if (b == 1) _renderer.DrawText(row, col, "▒", System.Drawing.Color.FromArgb(40, 45, 55));
+                else if (b == 2) _renderer.DrawText(row, col, ".", System.Drawing.Color.FromArgb(70, 70, 70));
+                // Rare distant artillery flash
+                int flash = unchecked(col * 11 + row * 17 + animTick / 7);
+                if ((flash & 511) == 13)
+                    _renderer.DrawText(row, col, "*", System.Drawing.Color.FromArgb(255, 200, 80));
+            }
+        }
+    }
+
+    private void DrawTitleFrame(int top, int height, int frameWidth)
+    {
+        int left = (Width - frameWidth) / 2;
+        var color = System.Drawing.Color.FromArgb(220, 180, 60);
+        // Backing fill — slightly darker than the smoky background
+        _renderer.FillRect(left, top, frameWidth, height, System.Drawing.Color.FromArgb(220, 12, 14, 18));
+        _renderer.DrawText(top, left, "╔" + new string('═', frameWidth - 2) + "╗", color);
+        _renderer.DrawText(top + height - 1, left, "╚" + new string('═', frameWidth - 2) + "╝", color);
+        for (int i = 1; i < height - 1; i++)
+        {
+            _renderer.DrawText(top + i, left, "║", color);
+            _renderer.DrawText(top + i, left + frameWidth - 1, "║", color);
+        }
+    }
+
+    private void DrawTitleHorizon(int row)
+    {
+        // A thin strip of bunker silhouettes + waves on the very bottom row
+        var bunker = System.Drawing.Color.FromArgb(80, 80, 90);
+        var wave = System.Drawing.Color.FromArgb(80, 110, 150);
+        for (int col = 0; col < Width; col++)
+        {
+            int b = col % 12;
+            if (b == 1)      _renderer.DrawText(row, col, "▟", bunker);
+            else if (b == 2) _renderer.DrawText(row, col, "█", bunker);
+            else if (b == 3) _renderer.DrawText(row, col, "▙", bunker);
+            else
+            {
+                int hash = unchecked(col * 73 + _renderer.AnimTick / 5);
+                if ((hash & 3) == 0) _renderer.DrawText(row, col, "~", wave);
+            }
+        }
     }
 
     private void DrawCharacterSelect()
