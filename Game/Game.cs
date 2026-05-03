@@ -15,8 +15,8 @@ public sealed class GameApp
     public const int VisibleLanes = 11;          // lanes shown on screen at once
     public const int VisualPlayRows = VisibleLanes * Renderer.LaneRows; // 33 rows
     public const int HudRow = VisualPlayRows;
-    public const int FlashRow = HudRow + 1;
-    public const int ScreenHeight = FlashRow + 1; // 35 rows
+    public const int FlashRow = HudRow + Renderer.HudRows;             // HUD takes 2 rows
+    public const int ScreenHeight = FlashRow + 1;                       // 36 rows
 
     /// <summary>Visual row (from bottom) the camera tries to keep the turtle at when scrolling.</summary>
     private const int TurtlePinRow = 4;
@@ -378,6 +378,7 @@ public sealed class GameApp
 
     private void DrawPausedOverlay()
     {
+        DrawOverlayPanel(panelHeight: 6);
         int row = VisualPlayRows / 2;
         _renderer.DrawCenteredLine(row,     Width, "── PAUSED ──", ConsoleColor.White);
         _renderer.DrawCenteredLine(row + 2, Width, "[Esc/Enter] resume    [Q] end run", ConsoleColor.DarkGray);
@@ -385,15 +386,30 @@ public sealed class GameApp
 
     private void DrawGameOverOverlay()
     {
+        DrawOverlayPanel(panelHeight: 13);
         int row = VisualPlayRows / 2;
-        _renderer.DrawCenteredLine(row - 2, Width, "── RUN OVER ──", ConsoleColor.Red);
-        _renderer.DrawCenteredLine(row,     Width, $"SCORE  {_score}",
+        _renderer.DrawCenteredLine(row - 4, Width, "── RUN OVER ──", ConsoleColor.Red);
+        // Big score — the main result of the run
+        _renderer.DrawCenteredBig(row - 2, Width, $"SCORE  {_score}",
             _newHighScoreThisRun ? ConsoleColor.Yellow : ConsoleColor.White);
         if (_newHighScoreThisRun)
-            _renderer.DrawCenteredLine(row + 2, Width, "*  NEW HIGH SCORE  *", ConsoleColor.Yellow);
+            _renderer.DrawCenteredLine(row + 1, Width, "★  NEW HIGH SCORE  ★", ConsoleColor.Yellow);
         else
-            _renderer.DrawCenteredLine(row + 2, Width, $"high score: {_save.HighScore}", ConsoleColor.DarkGray);
-        _renderer.DrawCenteredLine(row + 3, Width, $"Reached stage {StageNumber()}   +{_turtle?.Coins ?? 0} coins", ConsoleColor.Gray);
-        _renderer.DrawCenteredLine(row + 5, Width, "[Enter] back to title", ConsoleColor.DarkGray);
+            _renderer.DrawCenteredLine(row + 1, Width, $"high score: {_save.HighScore}", ConsoleColor.Gray);
+        _renderer.DrawCenteredLine(row + 2, Width, $"Reached stage {StageNumber()}   +{_turtle?.Coins ?? 0} coins", ConsoleColor.Gray);
+        _renderer.DrawCenteredLine(row + 4, Width, "[Enter] back to title", ConsoleColor.DarkGray);
+    }
+
+    private void DrawOverlayPanel(int panelHeight)
+    {
+        // Dim the play area underneath
+        _renderer.FillRect(0, 0, Width, VisualPlayRows, System.Drawing.Color.FromArgb(160, 0, 0, 0));
+        // Centered semi-opaque panel
+        int panelWidth = 52;
+        int panelX = (Width - panelWidth) / 2;
+        int panelY = (VisualPlayRows - panelHeight) / 2;
+        _renderer.FillRect(panelX, panelY, panelWidth, panelHeight, System.Drawing.Color.FromArgb(225, 10, 6, 8));
+        // 1-cell-inset border
+        _renderer.DrawRect(panelX, panelY, panelWidth, panelHeight, System.Drawing.Color.FromArgb(220, 60, 70));
     }
 }

@@ -14,6 +14,7 @@ public sealed class Renderer
     public const int FontSize = 16;
 
     private readonly Font _font;
+    private readonly Font _hudFont;
     private Graphics? _g;
     private int _animTick;
     private readonly Random _shakeRng = new(1);
@@ -26,7 +27,10 @@ public sealed class Renderer
     public Renderer()
     {
         _font = new Font("Consolas", FontSize, FontStyle.Bold, GraphicsUnit.Pixel);
+        _hudFont = new Font("Consolas", 28, FontStyle.Bold, GraphicsUnit.Pixel);
     }
+
+    public const int HudRows = 2; // HUD reserves this many cell rows on screen
 
     public int PixelWidth(int cells)  => cells * CellWidth;
     public int PixelHeight(int cells) => cells * CellHeight;
@@ -444,21 +448,39 @@ public sealed class Renderer
 
     public void DrawHud(int row, Turtle turtle, int stageNumber, int score, int highScore, int width)
     {
-        FillRect(0, row, width, 1, Color.FromArgb(25, 25, 22));
-        int col = 1;
-        col = DrawText(row, col, "DIST ",                 Color.FromArgb(220, 200, 140));
-        col = DrawText(row, col, score.ToString("N0"),     Color.FromArgb(255, 220, 60));
-        col = DrawText(row, col, " m",                     Color.Gray);
-        col = DrawText(row, col, "  BEST ",               Color.Gray);
-        col = DrawText(row, col, highScore.ToString("N0"), Color.FromArgb(200, 200, 200));
-        col = DrawText(row, col, "   WAVE ",              Color.FromArgb(220, 200, 140));
-        col = DrawText(row, col, stageNumber.ToString(),   Color.LightGreen);
-        col = DrawText(row, col, "   UNITS ",             Color.FromArgb(220, 200, 140));
-        col = DrawText(row, col, new string('@', Math.Max(0, turtle.Lives)), Color.Tomato);
-        col = DrawText(row, col, "   MEDALS ",            Color.FromArgb(220, 200, 140));
-        col = DrawText(row, col, turtle.Coins.ToString(),  Color.FromArgb(255, 220, 60));
-        col = DrawText(row, col, "  ",                    Color.White);
-        DrawText(row, col, turtle.Character.Name, ConsoleColorToColor(turtle.Character.Color));
+        // HUD reserves 2 cell rows. Background fill, then big-font text on top.
+        FillRect(0, row, width, HudRows, Color.FromArgb(25, 25, 22));
+        // Subtle separator line above the HUD
+        FillRect(0, row, width, 1, Color.FromArgb(220, 60, 60, 50));
+
+        int x = 8;                           // pixel padding from the left edge
+        int y = row * CellHeight;
+        int hudPxHeight = HudRows * CellHeight;
+
+        x = DrawHudSegment(x, y, hudPxHeight, "DIST ",                  Color.FromArgb(220, 200, 140));
+        x = DrawHudSegment(x, y, hudPxHeight, score.ToString("N0"),      Color.FromArgb(255, 220, 60));
+        x = DrawHudSegment(x, y, hudPxHeight, "m",                       Color.Gray);
+        x = DrawHudSegment(x, y, hudPxHeight, "  BEST ",                Color.Gray);
+        x = DrawHudSegment(x, y, hudPxHeight, highScore.ToString("N0"), Color.FromArgb(220, 220, 220));
+        x = DrawHudSegment(x, y, hudPxHeight, "   WAVE ",               Color.FromArgb(220, 200, 140));
+        x = DrawHudSegment(x, y, hudPxHeight, stageNumber.ToString(),    Color.LightGreen);
+        x = DrawHudSegment(x, y, hudPxHeight, "   UNITS ",              Color.FromArgb(220, 200, 140));
+        x = DrawHudSegment(x, y, hudPxHeight, new string('@', Math.Max(0, turtle.Lives)), Color.Tomato);
+        x = DrawHudSegment(x, y, hudPxHeight, "   MEDALS ",             Color.FromArgb(220, 200, 140));
+        x = DrawHudSegment(x, y, hudPxHeight, turtle.Coins.ToString(),   Color.FromArgb(255, 220, 60));
+        x = DrawHudSegment(x, y, hudPxHeight, "   ",                     Color.White);
+        DrawHudSegment(x, y, hudPxHeight, turtle.Character.Name,         ConsoleColorToColor(turtle.Character.Color));
+    }
+
+    private int DrawHudSegment(int x, int y, int height, string text, Color color)
+    {
+        // Use TextRenderer.MeasureText for accurate advance with the HUD font
+        var size = TextRenderer.MeasureText(_g!, text, _hudFont, new Size(int.MaxValue, height),
+            TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+        var rect = new Rectangle(x, y, size.Width, height);
+        TextRenderer.DrawText(_g!, text, _hudFont, rect, color, Color.Transparent,
+            TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter);
+        return x + size.Width;
     }
 
     public void DrawCenteredLine(int row, int width, string text, Color color)
@@ -469,6 +491,21 @@ public sealed class Renderer
 
     public void DrawCenteredLine(int row, int width, string text, ConsoleColor color)
         => DrawCenteredLine(row, width, text, ConsoleColorToColor(color));
+
+    /// <summary>Draw text centered horizontally with the bigger HUD font; spans HudRows cell rows.</summary>
+    public void DrawCenteredBig(int row, int widthCells, string text, Color color)
+    {
+        var size = TextRenderer.MeasureText(_g!, text, _hudFont, new Size(int.MaxValue, HudRows * CellHeight),
+            TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+        int x = (widthCells * CellWidth - size.Width) / 2;
+        int y = row * CellHeight;
+        var rect = new Rectangle(x, y, size.Width, HudRows * CellHeight);
+        TextRenderer.DrawText(_g!, text, _hudFont, rect, color, Color.Transparent,
+            TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter);
+    }
+
+    public void DrawCenteredBig(int row, int widthCells, string text, ConsoleColor color)
+        => DrawCenteredBig(row, widthCells, text, ConsoleColorToColor(color));
 
     // ───── primitives ─────
 
@@ -500,6 +537,14 @@ public sealed class Renderer
         using var brush = new SolidBrush(color);
         _g!.FillRectangle(brush, col * CellWidth, row * CellHeight,
                           widthCells * CellWidth, heightCells * CellHeight);
+    }
+
+    public void DrawRect(int col, int row, int widthCells, int heightCells, Color color)
+    {
+        if (color.IsEmpty || color.A == 0) return;
+        using var pen = new Pen(color, 2f);
+        _g!.DrawRectangle(pen, col * CellWidth, row * CellHeight,
+                          widthCells * CellWidth - 1, heightCells * CellHeight - 1);
     }
 
     public static Color ConsoleColorToColor(ConsoleColor c) => c switch
