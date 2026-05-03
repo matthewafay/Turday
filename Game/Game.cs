@@ -324,16 +324,16 @@ public sealed class GameApp
     private void DrawTitle()
     {
         DrawTitleAtmosphere();
-        DrawTitleFrame(top: 4, height: 9, frameWidth: 54);
+        DrawTitleFrame(top: 2, height: 11, frameWidth: 56);
 
-        // Big "TURDAY" — uses the HUD font, spans 2 cell rows
-        _renderer.DrawCenteredBig(6, Width, "T U R D A Y", System.Drawing.Color.FromArgb(255, 220, 60));
+        // HUGE "TURDAY" — uses the title font, spans 4 cell rows
+        _renderer.DrawCenteredTitle(4, Width, "T U R D A Y", System.Drawing.Color.FromArgb(255, 220, 60));
 
-        // Subtitle inside frame
-        _renderer.DrawCenteredLine(9,  Width, "O P E R A T I O N    S H E L L S T O R M",
+        // Subtitle and tagline inside the frame
+        _renderer.DrawCenteredBig(8, Width, "OPERATION  SHELLSTORM",
             System.Drawing.Color.FromArgb(220, 60, 60));
         _renderer.DrawCenteredLine(11, Width, "storming the beach. against all odds.",
-            System.Drawing.Color.FromArgb(180, 150, 90));
+            System.Drawing.Color.FromArgb(190, 160, 100));
 
         // Stats block
         _renderer.DrawCenteredLine(15, Width, $"HIGH SCORE   {_save.HighScore}", ConsoleColor.Yellow);
@@ -341,7 +341,7 @@ public sealed class GameApp
             ConsoleColor.DarkGray);
 
         // Menu — highlighted current option with arrow + brackets
-        int menuTop = 19;
+        int menuTop = 18;
         for (int i = 0; i < TitleOptions.Length; i++)
         {
             bool selected = _menuCursor == i;

@@ -15,6 +15,7 @@ public sealed class Renderer
 
     private readonly Font _font;
     private readonly Font _hudFont;
+    private readonly Font _titleFont;
     private Graphics? _g;
     private int _animTick;
     private readonly Random _shakeRng = new(1);
@@ -28,9 +29,11 @@ public sealed class Renderer
     {
         _font = new Font("Consolas", FontSize, FontStyle.Bold, GraphicsUnit.Pixel);
         _hudFont = new Font("Consolas", 28, FontStyle.Bold, GraphicsUnit.Pixel);
+        _titleFont = new Font("Consolas", 56, FontStyle.Bold, GraphicsUnit.Pixel);
     }
 
-    public const int HudRows = 2; // HUD reserves this many cell rows on screen
+    public const int HudRows = 2;     // HUD reserves this many cell rows on screen
+    public const int TitleRows = 4;   // big-title text reserves this many cell rows
 
     public int PixelWidth(int cells)  => cells * CellWidth;
     public int PixelHeight(int cells) => cells * CellHeight;
@@ -506,6 +509,18 @@ public sealed class Renderer
 
     public void DrawCenteredBig(int row, int widthCells, string text, ConsoleColor color)
         => DrawCenteredBig(row, widthCells, text, ConsoleColorToColor(color));
+
+    /// <summary>Draw text centered with the title font; spans TitleRows cell rows.</summary>
+    public void DrawCenteredTitle(int row, int widthCells, string text, Color color)
+    {
+        var size = TextRenderer.MeasureText(_g!, text, _titleFont, new Size(int.MaxValue, TitleRows * CellHeight),
+            TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+        int x = (widthCells * CellWidth - size.Width) / 2;
+        int y = row * CellHeight;
+        var rect = new Rectangle(x, y, size.Width, TitleRows * CellHeight);
+        TextRenderer.DrawText(_g!, text, _titleFont, rect, color, Color.Transparent,
+            TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter);
+    }
 
     // ───── primitives ─────
 
