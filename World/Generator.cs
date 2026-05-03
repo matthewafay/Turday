@@ -9,11 +9,11 @@ public static class Generator
     /// </summary>
     public static Lane BuildLane(int worldY, int width, int worldSeed)
     {
-        // First two rows are always safe grass (turtle starts here).
-        if (worldY <= 1) return SafeLane(rng: null, width, withCoin: false);
+        // First three rows are always safe grass — gives the player room to think on launch.
+        if (worldY <= 2) return SafeLane(rng: null, width, withCoin: false);
 
-        // Beach milestone at every multiple of LanesPerStage (Y > 0).
-        if (worldY > 0 && worldY % LanesPerStage == 0)
+        // Beach milestone at every multiple of LanesPerStage.
+        if (IsBeachLane(worldY))
         {
             return new Lane
             {
@@ -26,16 +26,16 @@ public static class Generator
 
         var rng = new Random(HashSeed(worldSeed, worldY));
         int stage = StageNumberFor(worldY);
-        int speedCap = Math.Min(4, 1 + stage / 2);
-        int densityBonus = Math.Min(stage - 1, 4);
+        int speedCap = SpeedCapForStage(stage);
+        int densityBonus = DensityBonusForStage(stage);
+        double safeChance = SafeLaneChance(stage);
 
-        // 1 in 6 lanes is a safe grass strip (roughly).
-        if (rng.NextDouble() < 0.18)
+        if (rng.NextDouble() < safeChance)
         {
             return SafeLane(rng, width, withCoin: rng.NextDouble() < 0.45);
         }
 
-        return BuildHazardLane(rng, width, speedCap, densityBonus);
+        return BuildHazardLane(rng, width, speedCap, densityBonus, stage);
     }
 
     public static int StageNumberFor(int worldY)
@@ -46,6 +46,56 @@ public static class Generator
 
     public static bool IsBeachLane(int worldY) =>
         worldY > 0 && worldY % LanesPerStage == 0;
+
+    // ─── Difficulty curve ───────────────────────────────────────────────
+    // Designed so stage 1 is genuinely a warm-up: tanks only, slow, lots of
+    // safe grass strips. Each subsequent stage introduces one new hazard
+    // type and tightens spacing/speed slightly.
+
+    private static int SpeedCapForStage(int stage) => stage switch
+    {
+        1 => 1,
+        2 => 2,
+        3 or 4 => 2,
+        5 or 6 => 3,
+        _      => 4,
+    };
+
+    private static int DensityBonusForStage(int stage) =>
+        Math.Clamp((stage - 3) / 2, 0, 4);
+        // Stage 1-3: 0 (target spacing as generated)
+        // Stage 4-5: 1
+        // Stage 6-7: 2
+        // Stage 8-9: 3
+        // Stage 10+: 4 (max compression)
+
+    private static double SafeLaneChance(int stage) => stage switch
+    {
+        1 => 0.45,
+        2 => 0.34,
+        3 => 0.26,
+        4 => 0.22,
+        _ => 0.18,
+    };
+
+    /// <summary>
+    /// Pool of hazard kinds available at this stage. Each new stage unlocks one more.
+    /// </summary>
+    private static (TileKind kind, HazardKind hazard, int width, int minSpacing, bool isStatic, double weight)[]
+        HazardPool(int stage)
+    {
+        var pool = new List<(TileKind, HazardKind, int, int, bool, double)>
+        {
+            // stage 1: just tanks
+            (TileKind.Road, HazardKind.Car, 5, 13, false, 1.00),
+        };
+        if (stage >= 2) pool.Add((TileKind.SkyLane,    HazardKind.Bird,   3, 10, false, 0.70));
+        if (stage >= 3) pool.Add((TileKind.DogLane,    HazardKind.Dog,    3, 11, false, 0.55));
+        if (stage >= 4) pool.Add((TileKind.Minefield,  HazardKind.Mine,   1,  7, true,  0.45));
+        if (stage >= 5) pool.Add((TileKind.TracerLane, HazardKind.Tracer, 3,  9, false, 0.45));
+        if (stage >= 6) pool.Add((TileKind.WireField,  HazardKind.Wire,   3, 11, true,  0.40));
+        return pool.ToArray();
+    }
 
     private static int HashSeed(int worldSeed, int worldY)
     {
@@ -76,57 +126,23 @@ public static class Generator
         return lane;
     }
 
-    private static Lane BuildHazardLane(Random rng, int width, int speedCap, int densityBonus)
+    private static Lane BuildHazardLane(Random rng, int width, int speedCap, int densityBonus, int stage)
     {
-        // Distribution: tank 28%, plane 18%, soldier 14%, mine 14%, tracer 14%, wire 12%.
-        TileKind kind;
-        HazardKind hazard;
-        int hazardWidth;
-        int minSpacing;
-        bool isStatic = false;
-        int speedOverride = -1;   // <0 means use rng
+        // Pick a hazard kind from the stage's pool, weighted.
+        var pool = HazardPool(stage);
+        double totalWeight = 0;
+        for (int i = 0; i < pool.Length; i++) totalWeight += pool[i].weight;
+        double roll = rng.NextDouble() * totalWeight;
+        var pick = pool[0];
+        for (int i = 0; i < pool.Length; i++)
+        {
+            if (roll < pool[i].weight) { pick = pool[i]; break; }
+            roll -= pool[i].weight;
+        }
+        var (kind, hazard, hazardWidth, minSpacing, isStatic, _) = pick;
 
-        var roll = rng.NextDouble();
-        if (roll < 0.28)
-        {
-            kind = TileKind.Road; hazard = HazardKind.Car;
-            hazardWidth = 5;
-            minSpacing  = 13;
-        }
-        else if (roll < 0.46)
-        {
-            kind = TileKind.SkyLane; hazard = HazardKind.Bird;
-            hazardWidth = 3;
-            minSpacing  = 10;
-        }
-        else if (roll < 0.60)
-        {
-            kind = TileKind.DogLane; hazard = HazardKind.Dog;
-            hazardWidth = 3;
-            minSpacing  = 11;
-        }
-        else if (roll < 0.74)
-        {
-            kind = TileKind.Minefield; hazard = HazardKind.Mine;
-            hazardWidth = 1;
-            minSpacing  = 7;
-            isStatic    = true;
-        }
-        else if (roll < 0.88)
-        {
-            kind = TileKind.TracerLane; hazard = HazardKind.Tracer;
-            hazardWidth = 3;
-            minSpacing  = 9;     // bursts: tighter spacing
-            speedOverride = Math.Min(5, speedCap + 2); // tracers fly faster than vehicles
-        }
-        else
-        {
-            kind = TileKind.WireField; hazard = HazardKind.Wire;
-            hazardWidth = 3;
-            // Wire spacing must leave gaps the turtle can pass through (footprint 5).
-            minSpacing  = 11;    // gap >= 8 columns between wire coils
-            isStatic    = true;
-        }
+        // Tracer lanes get a speed override above the regular speed cap.
+        int speedOverride = (hazard == HazardKind.Tracer) ? Math.Min(5, speedCap + 2) : -1;
 
         int direction = isStatic ? 0 : (rng.Next(2) == 0 ? -1 : 1);
         int speed = isStatic
@@ -138,7 +154,6 @@ public static class Generator
         int spacing = Math.Max(minSpacing, target);
 
         // Need N hazards such that N*spacing >= visible-plus-margin width.
-        // visibleSpan = width + 2*(hazardWidth + 4). Hazards uniformly spaced over Period = N*spacing.
         int visibleSpan = width + 2 * (hazardWidth + 4);
         int n = Math.Max(2, (int)Math.Ceiling((double)visibleSpan / spacing));
         int period = n * spacing;
