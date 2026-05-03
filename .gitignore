@@ -1,3 +1,29 @@
+# .NET build artifacts
 bin/
 obj/
 *.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.swp
+
+# IDE files
+.vs/
+.vscode/
+.idea/
+
+# Iteration screenshots & GrabIt metadata (only docs/ marketing shots are tracked)
+screenshots/
+*.grabit
+
+# OS junk
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Local environment
+*.log
+
+# Release binary — distributed via GitHub Releases, not tracked in repo
+turday.exe
+

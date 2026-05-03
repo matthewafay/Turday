@@ -330,8 +330,10 @@ public sealed class GameApp
         _renderer.DrawCenteredLine(7,  Width, "|     storming the beach against all odds    |", ConsoleColor.DarkYellow);
         _renderer.DrawCenteredLine(8,  Width, "==============================================", ConsoleColor.DarkYellow);
 
-        _renderer.DrawCenteredLine(11, Width, $"HIGH SCORE   {_save.HighScore}", ConsoleColor.Yellow);
-        _renderer.DrawCenteredLine(12, Width, $"coins  {_save.Coins}     best stage  {_save.BestStage}", ConsoleColor.DarkGray);
+        _renderer.DrawCenteredLine(10, Width, "created by Matthew Fay", ConsoleColor.DarkGray);
+
+        _renderer.DrawCenteredLine(12, Width, $"HIGH SCORE   {_save.HighScore}", ConsoleColor.Yellow);
+        _renderer.DrawCenteredLine(13, Width, $"coins  {_save.Coins}     best stage  {_save.BestStage}", ConsoleColor.DarkGray);
 
         for (int i = 0; i < TitleOptions.Length; i++)
         {

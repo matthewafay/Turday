@@ -1,86 +1,109 @@
-# TurDay
+# TurDay — Operation Shellstorm
 
-A turtle crosses a procedurally generated road of hazards to reach the beach. Frogger-meets-Crossy-Road gameplay with a Flappy-Bird-style score, persistent coins between runs, and unlockable characters.
+> **A turtle's trip to the beach. Against all odds.**
 
-The game runs in a windowed app that **renders an ASCII grid** with a monospace font — same retro look as a terminal, but with much more screen space and no console quirks.
+You're a turtle. The beach is up there. Between you and it: tank divisions, strafing dive-bombers, marching infantry, minefields, tracer fire, and barbed wire. You have three lives. *Move.*
 
-## Quick start
+![TurDay title screen](docs/title.png)
 
-Run the included single-file `turday.exe` (Windows x64, no install needed):
+---
 
-```
-turday.exe
-```
+## Storm the beach
 
-Or build from source (requires .NET 10 SDK):
+The world scrolls under you forever. Every lane you cross adds to your **DIST**. Every 30 lanes you reach a **BEACHHEAD** for a fat stage bonus and a difficulty spike. Die enough times, your run ends — but coins you grabbed during it are kept and spent on **new turtles** with new perks.
 
-```
-dotnet run
-```
+![Gameplay — tanks, planes, soldiers](docs/gameplay.png)
+
+There's no level select. There's no end. Just one direction: forward, until you can't.
+
+---
+
+## What's in your way
+
+| Hazard | What it does |
+|---|---|
+| **Tanks** | Roll across roads in olive drab. Slow but lethal — and they cluster. |
+| **Planes** | Strafe the sky lanes with banking wings. Faster than tanks. |
+| **Soldiers** | Patrol no-man's-land in helmeted squads. |
+| **Mines** | Static, dug into tan minefields. Walk on one and it's over. |
+| **Tracer rounds** | Bright streaks fly across dusk lanes at high speed — bursts you have to time. |
+| **Barbed wire** | Doesn't damage you. *Blocks* you. Make a hole or go around. |
+
+![Variety — tracers, mines, wire fields](docs/variety.png)
+
+---
+
+## Score, characters, and persistence
+
+- **Flappy-Bird-style scoring**: every new lane forward = +1. Crossing a beach milestone = +25 × wave. Beat your **HIGH SCORE** for a `★ NEW HIGH SCORE ★` banner on the run-over screen.
+- **Coins (medals)**: scattered through grass strips. They bank to your save file at the end of each run.
+- **Unlockable characters** with passive perks:
+  - **Shelly** (free) — the standard turtle.
+  - **Snapper** (50 medals) — +1 starting life.
+  - **Zippy** (75 medals) — hazards move 15 % slower.
+  - **Wraith** (150 medals) — one free hazard pass per stage.
+- **Save file** at `%APPDATA%\TurDay\save.json` — coins, high score, best stage, unlocked characters. Reset from the title menu.
+
+![The Beachhead](docs/beach.png)
+
+---
 
 ## Controls
 
-| Key                | Action          |
-|--------------------|-----------------|
-| Arrow keys / WASD  | Move turtle     |
-| Enter / Space      | Confirm         |
-| Esc                | Pause           |
-| Q                  | Quit run / app  |
+| Key | Action |
+|---|---|
+| **Arrows / WASD** | Move (left/right hold-to-strafe; up/down deliberate per press) |
+| **Enter / Space** | Confirm |
+| **Esc** | Pause |
+| **Q** | Quit run / app |
 
-## Goal
+Lateral movement auto-repeats while held — strafing through a tracer barrage feels snappy. Forward and back **don't** auto-repeat: you choose your moments.
 
-Push the turtle as far forward as possible through an endlessly scrolling world. Avoid cars, birds, and dogs. Collect `$` coins. Every 30 lanes you cross a **beach milestone** that banks a stage bonus. Lose all your lives and the run ends — coins persist between runs.
+---
 
-## Scoring
+## Visuals
 
-- **+1 score** for every new farthest row you reach in a stage (Flappy-Bird style — the further you push, the more you score).
-- **Stage clear bonus** of `25 × stage number` when you touch the beach.
-- Your **HIGH SCORE** is saved between runs and shown on the title screen and game-over screen.
+ASCII-grid game rendered in a real Windows window. Hybrid pixel-art style:
 
-## Characters
+- **Multi-cell character sprites** built from Unicode block chars (`█▒░▓▀▄`)
+- **Per-sprite silhouette outlines** in a darker shade of each unit's color
+- **Drop shadows** along the bottom-right of every gameplay sprite
+- **Animated lane backgrounds** — drifting clouds, scrolling tank-tread roads, lapping waves on the beach, blinking coin pickups
+- **Screen shake** on hits
 
-Spend banked coins on the **Characters** screen to unlock new turtles:
+It's a console aesthetic, but with proper graphics underneath, so the window can be much larger than a terminal and the action stays smooth.
 
-| Character | Cost | Perk                            |
-|-----------|------|---------------------------------|
-| Shelly    | 0    | (free starter)                  |
-| Snapper   | 50   | +1 starting life                |
-| Zippy     | 75   | hazards 15 % slower             |
-| Wraith    | 150  | one free hazard pass per stage  |
+---
 
-## Save file
+## Quick start
 
-Progress is stored at:
+Grab `turday.exe` from the [latest release](https://github.com/matthewafay/Turday/releases/latest) and double-click. No installer. No runtime needed — the .NET 10 runtime is bundled. Windows x64 only.
 
-```
-%APPDATA%\TurDay\save.json
-```
+### Build from source
 
-Reset progress from the title menu (**Reset Save**) or delete that file.
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
-## Build
-
-```
-# debug
-dotnet build
-
-# single-file portable exe
-dotnet publish -c Release
-# -> bin\Release\net10.0-windows\win-x64\publish\turday.exe
+```powershell
+git clone https://github.com/matthewafay/Turday.git
+cd Turday
+dotnet run                           # debug
+dotnet publish -c Release            # produces bin/Release/net10.0-windows/win-x64/publish/turday.exe
 ```
 
-The published `.exe` is self-contained — no runtime needed on the target machine.
-
-## Tech
-
-- .NET 10 + WinForms host (`GameForm`)
-- Custom GDI renderer (`Render/Renderer.cs`) draws every cell with `TextRenderer.DrawText` in Consolas at 14 px, 14×22 px cell grid
-- 70 × 30 cell window (~980 × 660 px). Tweak `Renderer.CellWidth`/`CellHeight` to scale.
-- Game state machine and procedural generator are decoupled from the renderer (`Game/`, `World/`, `Entities/`), so swapping in a different host (raw GDI, Avalonia, Raylib) is straightforward.
-
-## Args
+### Args
 
 ```
-turday [--seed N]   # deterministic level generation
-       [--help]     # show controls + save path in a message box
+turday [--seed N]      # deterministic level generation (useful for repro / sharing seeds)
+       [--start-y N]   # debug: spawn at world Y N (e.g. --start-y 30 for the first beachhead)
+       [--help]
 ```
+
+---
+
+## Credits
+
+Created by **Matthew Fay**.
+
+Built with .NET 10 + WinForms. Renderer is a custom GDI text-grid drawing every cell with `TextRenderer.DrawText` in **Consolas 16 px**, plus per-sprite outline + drop-shadow passes for depth. Game logic, world, and renderer are decoupled — swapping the host for Avalonia / Raylib / a Win32 console would be straightforward.
+
+License: see [LICENSE](LICENSE) if present, otherwise all rights reserved.

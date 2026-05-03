@@ -6,7 +6,7 @@ namespace TurDay.Game;
 
 public sealed class GameForm : Form
 {
-    private const int TickMs = 50;
+    private const int TickMs = 33;            // ~30Hz update
     private const int MaxIntentsPerTick = 8;
 
     private readonly GameApp _app;
@@ -46,23 +46,18 @@ public sealed class GameForm : Form
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
-        var intent = InputReader.FromKey(e.KeyCode);
-        if (intent == Intent.None) { base.OnKeyDown(e); return; }
+        // .Add returns true if the key was newly added (i.e., this is a real first press,
+        // not an OS auto-repeat). All keys flow through _heldKeys for repeat suppression.
+        bool firstPress = _heldKeys.Add(e.KeyCode);
 
-        if (IsContinuous(intent))
+        var intent = InputReader.FromKey(e.KeyCode);
+        if (intent != Intent.None && firstPress)
         {
-            // Held-key model: track state ourselves; ignore OS auto-repeat events.
-            // First-press also enqueues an immediate intent so the very first frame moves.
-            if (_heldKeys.Add(e.KeyCode))
-            {
-                _pending.Enqueue(intent);
-            }
+            // Fire once on first press for everything (so taps feel instant).
+            // Continuous keys also get re-fired by OnTick while still held.
+            _pending.Enqueue(intent);
         }
-        else
-        {
-            // One-shot keys (Enter/Esc/Q) — only fire on first press, not on auto-repeat.
-            if (!e.IsRepeat) _pending.Enqueue(intent);
-        }
+
         e.Handled = true;
         e.SuppressKeyPress = true;
         base.OnKeyDown(e);
@@ -80,8 +75,10 @@ public sealed class GameForm : Form
         base.OnLostFocus(e);
     }
 
-    private static bool IsContinuous(Intent i) =>
-        i == Intent.Up || i == Intent.Down || i == Intent.Left || i == Intent.Right;
+    // Lateral keys (L/R) auto-repeat while held — that's what gives the snappy strafing.
+    // Forward/back (U/D) intentionally do NOT auto-repeat: pressing UP once = one lane forward,
+    // so you can't accidentally leap into a wall of hazards.
+    private static bool IsLateralRepeating(Intent i) => i == Intent.Left || i == Intent.Right;
 
     private void OnTick(object? sender, EventArgs e)
     {
@@ -89,12 +86,11 @@ public sealed class GameForm : Form
         double elapsedMs = (now - _lastTickTicks) * 1000.0 / Stopwatch.Frequency;
         _lastTickTicks = now;
 
-        // Each tick: any currently-held movement keys fire one intent. This bypasses
-        // the OS initial auto-repeat delay (~300ms) entirely.
+        // Each tick: held LATERAL keys fire one extra intent. Bypasses OS initial-repeat delay.
         foreach (var key in _heldKeys)
         {
             var intent = InputReader.FromKey(key);
-            if (intent != Intent.None && IsContinuous(intent))
+            if (intent != Intent.None && IsLateralRepeating(intent))
                 _pending.Enqueue(intent);
         }
 
