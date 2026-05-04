@@ -423,7 +423,7 @@ public sealed class Renderer
             }
         }
 
-        // Pass 2: characters on top
+        // Pass 2: characters on top, with optional per-cell tint
         for (int dr = 0; dr < sprite.Height; dr++)
         {
             string line = sprite.Rows[dr];
@@ -433,9 +433,37 @@ public sealed class Renderer
                 if (col < 0) continue;
                 char ch = line[i];
                 if (ch == ' ') continue;
-                DrawCell(screenRowTop + dr, col, ch, fg, Color.Empty);
+                Color cellColor = ResolveTint(sprite, dr, i, fg);
+                DrawCell(screenRowTop + dr, col, ch, cellColor, Color.Empty);
             }
         }
+    }
+
+    private static Color ResolveTint(Sprite sprite, int row, int col, Color primary)
+    {
+        if (sprite.Tints == null) return primary;
+        if (row >= sprite.Tints.Length) return primary;
+        var tintRow = sprite.Tints[row];
+        if (col >= tintRow.Length) return primary;
+        char t = tintRow[col];
+        if (t == ' ' || t == '=') return primary;
+        if (sprite.Palette != null && sprite.Palette.TryGetValue(t, out var c)) return c;
+        return t switch
+        {
+            '-' => Darken(primary, 0.65),
+            '_' => Darken(primary, 0.40),
+            '+' => Lighten(primary, 1.30),
+            '*' => Lighten(primary, 1.60),
+            _   => primary,
+        };
+    }
+
+    private static Color Lighten(Color c, double factor)
+    {
+        return Color.FromArgb(
+            Math.Min(255, (int)(c.R * factor)),
+            Math.Min(255, (int)(c.G * factor)),
+            Math.Min(255, (int)(c.B * factor)));
     }
 
     private static Color Darken(Color c, double factor)
